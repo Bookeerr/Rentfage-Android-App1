@@ -1,0 +1,23 @@
+# Archivos generados por Android Studio y el sistema de compilación de Gradle
+*.iml
+.gradle/
+/local.properties
+/.idea/
+/build/
+
+# Archivos de Keystore (Secretos)
+*.jks
+*.keystore
+
+# Archivos de servicios de Google (pueden contener información sensible)
+google-services.json
+
+# Archivos de Crashlytics
+crashlytics.properties
+crashlytics-build.properties
+
+# Capturas de pantalla y videos del emulador
+/captures/
+
+# Archivos del sistema operativo (Mac)
+.DS_Store
