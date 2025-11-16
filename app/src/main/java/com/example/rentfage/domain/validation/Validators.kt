@@ -4,11 +4,11 @@ import android.util.Patterns
 
 fun validateEmail(email: String): String? {
     if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-        return "Email no válido"
+        return "Email no valido"
     }
     return null
 }
-//funcion
+
 fun validateNameLettersOnly(name: String): String? {
     if (name.any { !it.isLetter() && !it.isWhitespace() }) {
         return "El nombre solo puede contener letras y espacios"
@@ -18,10 +18,10 @@ fun validateNameLettersOnly(name: String): String? {
 
 fun validatePhoneDigitsOnly(phone: String): String? {
     if (phone.any { !it.isDigit() }) {
-        return "El teléfono solo puede contener dígitos"
+        return "El telefono solo puede contener digitos"
     }
     if (phone.length < 8) {
-        return "El teléfono debe tener al menos 8 dígitos"
+        return "El telefono debe tener al menos 8 digitos"
     }
     return null
 }
@@ -31,10 +31,10 @@ fun validateStrongPassword(password: String): String? {
         return "La contraseña debe tener al menos 8 caracteres"
     }
     if (!password.any { it.isDigit() }) {
-        return "La contraseña debe contener al menos un número"
+        return "La contraseña debe contener al menos un numero"
     }
     if (!password.any { it.isUpperCase() }) {
-        return "La contraseña debe contener al menos una mayúscula"
+        return "La contraseña debe contener al menos una mayuscula"
     }
     return null
 }
