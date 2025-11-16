@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.example.rentfage.domain.validation.ValidatorsTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2025-11-16T21:40:05.888Z" hostname="FRAN" time="1.983">
+  <properties/>
+  <testcase name="validateEmail con email valido no devuelve error" classname="com.example.rentfage.domain.validation.ValidatorsTest" time="1.983"/>
+  <system-out><![CDATA[WARNING: No manifest file found at .\AndroidManifest.xml.
+Falling back to the Android OS resources only.
+To remove this warning, annotate your test class with @Config(manifest=Config.NONE).
+If you're using Android Gradle Plugin, add testOptions.unitTests.includeAndroidResources = true to your build.gradle
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
