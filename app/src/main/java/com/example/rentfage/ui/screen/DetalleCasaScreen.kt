@@ -16,13 +16,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,43 +33,68 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.rentfage.R
-import com.example.rentfage.data.local.Casa
+import com.example.rentfage.data.local.room.AppDatabase
+import com.example.rentfage.data.local.room.entity.CasaEntity
+import com.example.rentfage.data.repository.CasasRepository
 import com.example.rentfage.ui.viewmodel.CasasViewModel
+import com.example.rentfage.ui.viewmodel.CasasViewModelFactory
 import com.example.rentfage.ui.viewmodel.HistorialViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+// Nueva "puerta de entrada" que se encarga de la logica del ViewModel.
 @Composable
-fun DetalleCasaScreen(
+fun DetalleCasaScreenVm(
     casaId: Int,
     onGoHome: () -> Unit,
-    casasViewModel: CasasViewModel = viewModel(),
-    historialViewModel: HistorialViewModel = viewModel()
+    historialViewModel: HistorialViewModel = viewModel() // Se mantiene el de historial para el boton de compra
 ) {
-    val casasState by casasViewModel.uiState.collectAsState()
-    val casa = casasState.casas.find { it.id == casaId }
+    val context = LocalContext.current
 
-    if (casa != null) {
-        DetalleCasaContent(
-            casa = casa, 
-            onGoHome = onGoHome,
-            onAddSolicitud = { historialViewModel.addSolicitud(casa) } // Acción para añadir la solicitud.
-        )
-    } else {
-        Text("Casa no encontrada.", modifier = Modifier.padding(16.dp))
+    // Se crea la cadena de dependencias: BD -> Repositorio -> Factory -> ViewModel
+    val database = remember { AppDatabase.getDatabase(context) }
+    val repository = remember { CasasRepository(database.casaDao()) }
+    val factory = remember { CasasViewModelFactory(repository) }
+    val casasViewModel: CasasViewModel = viewModel(factory = factory)
+
+    // Se obtiene el estado de la casa especifica desde el ViewModel.
+    val casaState by casasViewModel.getCasaById(casaId).collectAsStateWithLifecycle()
+
+    // Crossfade para una transicion suave entre el estado de carga y el contenido.
+    Crossfade(targetState = casaState, label = "DetalleCasaAnimation") { casa ->
+        if (casa != null) {
+            DetalleCasaContent(
+                casa = casa,
+                onGoHome = onGoHome,
+                onAddSolicitud = { historialViewModel.addSolicitud(casa) } // Adaptado para CasaEntity
+            )
+        } else {
+            // Muestra un indicador de carga mientras se busca la casa en la BD.
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                CircularProgressIndicator()
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Cargando propiedad...")
+            }
+        }
     }
 }
 
 @Composable
 private fun DetalleCasaContent(
-    casa: Casa,
+    casa: CasaEntity, // El tipo de dato ahora es CasaEntity
     onGoHome: () -> Unit,
     onAddSolicitud: () -> Unit
 ) {
@@ -79,7 +104,6 @@ private fun DetalleCasaContent(
 
     Crossfade(targetState = showPurchaseSummary, label = "PurchaseScreenAnimation") { isSummaryVisible ->
         if (isSummaryVisible) {
-            // Pantalla de confirmación de éxito.
             Column(
                 modifier = Modifier.fillMaxSize().padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -93,32 +117,17 @@ private fun DetalleCasaContent(
                         Icon(
                             imageVector = Icons.Default.CheckCircle,
                             contentDescription = "Éxito",
-                            tint = Color(0xFF4CAF50), // Color verde para indicar éxito.
+                            tint = Color(0xFF4CAF50),
                             modifier = Modifier.size(64.dp)
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = "¡Solicitud Enviada!",
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Text("¡Solicitud Enviada!", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.height(24.dp))
-                        Column(horizontalAlignment = Alignment.Start, modifier = Modifier.fillMaxWidth()) {
-                            Text("1. Un asesor te contactará para más detalles.", style = MaterialTheme.typography.bodyLarge)
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Text("2. Recibirás contrato preliminar para firma.", style = MaterialTheme.typography.bodyLarge)
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Text("3. Coordinaremos visita o inspección.", style = MaterialTheme.typography.bodyLarge)
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Text("4. Te ayudamos con trámites y financiamiento.", style = MaterialTheme.typography.bodyLarge)
-                        }
-                        Spacer(modifier = Modifier.height(32.dp))
                         Button(onClick = onGoHome) { Text("Volver a propiedades") }
                     }
                 }
             }
         } else {
-            // Pantalla de detalle de la casa.
             Column(
                 modifier = Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState())
             ) {
@@ -134,16 +143,6 @@ private fun DetalleCasaContent(
                 Text(text = casa.address, style = MaterialTheme.typography.titleLarge)
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(text = casa.details, style = MaterialTheme.typography.bodyLarge)
-
-                Spacer(modifier = Modifier.height(24.dp))
-                Text(text = "Formas de Pago", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("Tarjeta de Credito")
-                Spacer(modifier = Modifier.height(4.dp))
-                Text("Transferencia Bancaria")
-                Spacer(modifier = Modifier.height(4.dp))
-                Text("Credito Hipotecario")
-
                 Spacer(modifier = Modifier.height(32.dp))
                 Button(
                     onClick = { showConfirmationDialog = true },
@@ -158,8 +157,8 @@ private fun DetalleCasaContent(
     if (showConfirmationDialog) {
         AlertDialog(
             onDismissRequest = { showConfirmationDialog = false },
-            title = { Text("Confirmación de Compra") },
-            text = { Text("¿Estás seguro de comprar esta propiedad?") },
+            title = { Text("Confirmacion de Compra") },
+            text = { Text("¿Estas seguro de comprar esta propiedad?") },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -179,7 +178,6 @@ private fun DetalleCasaContent(
     }
 }
 
-// Función auxiliar para construir la URI de un recurso drawable.
 private fun resourceUri(resourceId: Int): String {
     return "${ContentResolver.SCHEME_ANDROID_RESOURCE}://com.example.rentfage/drawable/$resourceId"
 }
@@ -187,6 +185,6 @@ private fun resourceUri(resourceId: Int): String {
 @Preview(showBackground = true)
 @Composable
 fun DetalleCasaScreenPreview() {
-    val casaDeEjemplo = Casa(1, "UF 28.500", "Av. Vitacura, Vitacura, Santiago", "4 hab | 1 baño | 450 m²", resourceUri(R.drawable.casa1), -33.4130, -70.5947)
+    val casaDeEjemplo = CasaEntity(1, "UF 28.500", "Av. Vitacura, Vitacura, Santiago", "4 hab | 1 baño | 450 m²", resourceUri(R.drawable.casa1), -33.4130, -70.5947)
     DetalleCasaContent(casa = casaDeEjemplo, onGoHome = {}, onAddSolicitud = {})
 }

@@ -2,7 +2,7 @@ package com.example.rentfage.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.rentfage.data.local.Casa
+import com.example.rentfage.data.local.room.entity.CasaEntity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -14,12 +14,13 @@ import java.util.Locale
 
 enum class EstadoSolicitud { Pendiente, Aprobada, Rechazada }
 
+// La data class Solicitud ahora usa CasaEntity.
 data class Solicitud(
     val id: Int,
     val usuarioEmail: String,
-    val casa: Casa,
+    val casa: CasaEntity, // <-- CAMBIO IMPORTANTE
     val fecha: String,
-    var estado: EstadoSolicitud // Se cambia a var para poder modificar el estado
+    var estado: EstadoSolicitud
 )
 
 data class HistorialUiState(
@@ -36,13 +37,13 @@ class HistorialViewModel : ViewModel() {
     }
 
     init {
-        // Cuando el ViewModel se crea, intenta cargar las solicitudes del usuario.
         viewModelScope.launch {
             cargarSolicitudesDeUsuario()
         }
     }
 
-    fun addSolicitud(casa: Casa) {
+    // La funcion addSolicitud ahora acepta una CasaEntity.
+    fun addSolicitud(casa: CasaEntity) { // <-- CAMBIO IMPORTANTE
         val currentUserEmail = AuthViewModel.activeUserEmail
         if (currentUserEmail != null) {
             val newId = (solicitudesGlobales.maxOfOrNull { it.id } ?: 0) + 1
@@ -55,9 +56,8 @@ class HistorialViewModel : ViewModel() {
                 fecha = fechaActual,
                 estado = EstadoSolicitud.Pendiente
             )
-            
+
             solicitudesGlobales.add(nuevaSolicitud)
-            // Se notifica a la UI que la lista ha cambiado.
             cargarSolicitudesDeUsuario()
         }
     }
@@ -73,7 +73,7 @@ class HistorialViewModel : ViewModel() {
         }
     }
 
-    // funciones de admin
+    // --- Funciones de Admin ---
 
     fun cargarTodasLasSolicitudes() {
         _uiState.update { it.copy(solicitudes = solicitudesGlobales) }

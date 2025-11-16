@@ -23,43 +23,54 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.rentfage.R
-import com.example.rentfage.data.local.Casa
+import com.example.rentfage.data.local.room.AppDatabase
+import com.example.rentfage.data.local.room.entity.CasaEntity
+import com.example.rentfage.data.repository.CasasRepository
 import com.example.rentfage.ui.viewmodel.CasasViewModel
+import com.example.rentfage.ui.viewmodel.CasasViewModelFactory
 
+// Nueva puerta de entrada que se encarga de la logica del ViewModel.
 @Composable
-fun FavoritosScreenVm(
-    vm: CasasViewModel,
-    onHouseClick: (Int) -> Unit
-) {
-    val state by vm.uiState.collectAsState()
-    // Filtra la lista de casas para mostrar solo las marcadas como favoritas.
-    val casasFavoritas = state.casas.filter { it.isFavorite }
+fun FavoritosScreenVm(onHouseClick: (Int) -> Unit) {
+    val context = LocalContext.current
+
+    // Se crea la cadena de dependencias: BD -> Repositorio -> Factory -> ViewModel
+    val database = remember { AppDatabase.getDatabase(context) }
+    val repository = remember { CasasRepository(database.casaDao()) }
+    val factory = remember { CasasViewModelFactory(repository) }
+    val vm: CasasViewModel = viewModel(factory = factory)
+
+    // Se observa el NUEVO uiState de favoritos.
+    val state by vm.favoritasUiState.collectAsStateWithLifecycle()
 
     FavoritosScreen(
-        casas = casasFavoritas,
+        casas = state.casas,
         onHouseClick = onHouseClick,
-        onToggleFavorite = { casaId -> vm.toggleFavorite(casaId) }
+        onToggleFavorite = { casa -> vm.toggleFavorite(casa) } // Se pasa la entidad completa
     )
 }
 
 @Composable
 private fun FavoritosScreen(
-    casas: List<Casa>,
+    casas: List<CasaEntity>,
     onHouseClick: (Int) -> Unit,
-    onToggleFavorite: (Int) -> Unit
+    onToggleFavorite: (CasaEntity) -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp)
@@ -70,20 +81,18 @@ private fun FavoritosScreen(
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
-        // Si la lista de favoritos está vacía, muestra un mensaje.
         if (casas.isEmpty()) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Aún no has añadido ninguna casa a favoritos.",
+                    text = "Aun no has añadido ninguna casa a favoritos.",
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
                 )
             }
         } else {
-            // Si hay favoritos, los muestra en una lista.
             LazyColumn(
                 contentPadding = PaddingValues(vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -92,7 +101,7 @@ private fun FavoritosScreen(
                     HouseCardFavorites(
                         casa = casa,
                         onClick = { onHouseClick(casa.id) },
-                        onToggleFavorite = { onToggleFavorite(casa.id) }
+                        onToggleFavorite = { onToggleFavorite(casa) }
                     )
                 }
             }
@@ -100,10 +109,9 @@ private fun FavoritosScreen(
     }
 }
 
-// Componente que representa la tarjeta de una casa en la lista de favoritos.
 @Composable
 private fun HouseCardFavorites(
-    casa: Casa,
+    casa: CasaEntity, // El tipo de dato ahora es CasaEntity
     onClick: () -> Unit,
     onToggleFavorite: () -> Unit
 ) {
@@ -114,7 +122,6 @@ private fun HouseCardFavorites(
     ) {
         Column {
             Box(modifier = Modifier.fillMaxWidth().height(200.dp)) {
-                // Carga la imagen de la casa desde su URI usando Coil.
                 AsyncImage(
                     model = casa.imageUri.toUri(),
                     contentDescription = "Imagen de la casa",
@@ -136,14 +143,11 @@ private fun HouseCardFavorites(
                 Text(text = casa.price, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(text = casa.address, style = MaterialTheme.typography.titleMedium)
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(text = casa.details, style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
             }
         }
     }
 }
 
-// Función auxiliar para construir la URI de un recurso drawable para las vistas previas.
 private fun resourceUri(resourceId: Int): String {
     return "${ContentResolver.SCHEME_ANDROID_RESOURCE}://com.example.rentfage/drawable/$resourceId"
 }
@@ -152,8 +156,8 @@ private fun resourceUri(resourceId: Int): String {
 @Composable
 fun FavoritosScreenPreview() {
     val casasDeEjemplo = listOf(
-        Casa(2, "UF 28.900", "Vitacura, sector Santa María de Manquehue", "5 hab | 4 baños | 620 m²", resourceUri(R.drawable.casa2), -33.3592, -70.5150, true),
-        Casa(3, "UF 19.800", "Las Condes, sector El Golf", "3 hab | 3 baños | 340 m²", resourceUri(R.drawable.casa3), -33.3989, -70.5303, true)
+        CasaEntity(2, "UF 28.900", "Vitacura, sector Santa María de Manquehue", "5 hab | 4 baños | 620 m²", resourceUri(R.drawable.casa2), -33.3592, -70.5150, true),
+        CasaEntity(3, "UF 19.800", "Las Condes, sector El Golf", "3 hab | 3 baños | 340 m²", resourceUri(R.drawable.casa3), -33.3989, -70.5303, true)
     )
     FavoritosScreen(
         casas = casasDeEjemplo,
