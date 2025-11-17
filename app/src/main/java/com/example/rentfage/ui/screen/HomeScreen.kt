@@ -3,6 +3,7 @@ package com.example.rentfage.ui.screen
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.content.ContentResolver
 import android.content.Context
 import android.content.IntentSender
 import android.os.Looper
@@ -27,22 +28,43 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import com.example.rentfage.data.local.entity.CasaEntity
+import com.example.rentfage.R
+import com.example.rentfage.data.local.room.AppDatabase
+import com.example.rentfage.data.local.room.entity.CasaEntity
 import com.example.rentfage.data.local.storage.UserPreferences
+import com.example.rentfage.data.repository.CasasRepository
 import com.example.rentfage.ui.viewmodel.CasasViewModel
+import com.example.rentfage.ui.viewmodel.CasasViewModelFactory
 import com.google.android.gms.common.api.ResolvableApiException
 import com.google.android.gms.location.*
 
 // Esta es la funcion que se llamara desde el NavGraph.
 @Composable
-fun HomeScreenVm(onHouseClick: (Int) -> Unit, casasViewModel: CasasViewModel) {
-    val uiState by casasViewModel.uiState.collectAsStateWithLifecycle()
-
+fun HomeScreenVm(onHouseClick: (Int) -> Unit) {
     val context = LocalContext.current
+
+    // Creamos las instancias de la base de datos y el repositorio.
+    val database = remember { AppDatabase.getDatabase(context) }
+    val repository = remember { CasasRepository(database.casaDao()) }
+
+    // Efecto que se lanza una sola vez para poblar la base de datos si es necesario.
+    // La clave `Unit` asegura que esto solo se ejecute la primera vez que se compone la pantalla.
+    LaunchedEffect(Unit) {
+        repository.popularBaseDeDatosSiEsNecesario()
+    }
+
+    // Creamos el ViewModel usando nuestra Factory para inyectarle el repositorio.
+    val vm: CasasViewModel = viewModel(factory = CasasViewModelFactory(repository))
+
+    val uiState by vm.uiState.collectAsStateWithLifecycle()
+
+    // El resto de la logica de la UI permanece igual.
     val userPrefs = remember { UserPreferences(context) }
     val isLoggedIn by userPrefs.isLoggedIn.collectAsStateWithLifecycle(initialValue = false)
 
@@ -52,14 +74,14 @@ fun HomeScreenVm(onHouseClick: (Int) -> Unit, casasViewModel: CasasViewModel) {
         casas = uiState.casas,
         isLoggedIn = isLoggedIn,
         onHouseClick = onHouseClick,
-        onToggleFavorite = { casa -> casasViewModel.toggleFavorite(casa) },
+        onToggleFavorite = { casa -> vm.toggleFavorite(casa) }, // Pasamos la entidad completa
         onRequestLocation = locationLogic.requestLocationPermission
     )
 }
 
 @Composable
 private fun HomeScreen(
-    casas: List<CasaEntity>,
+    casas: List<CasaEntity>, // El tipo de dato ahora es CasaEntity
     isLoggedIn: Boolean,
     onHouseClick: (Int) -> Unit,
     onToggleFavorite: (CasaEntity) -> Unit,
@@ -98,7 +120,7 @@ private fun HomeScreen(
             HouseCard(
                 casa = casa,
                 onClick = { onHouseClick(casa.id) },
-                onToggleFavorite = { onToggleFavorite(casa) }
+                onToggleFavorite = { onToggleFavorite(casa) } // Pasamos la entidad completa
             )
         }
     }
@@ -106,7 +128,7 @@ private fun HomeScreen(
 
 @Composable
 private fun HouseCard(
-    casa: CasaEntity,
+    casa: CasaEntity, // El tipo de dato ahora es CasaEntity
     onClick: () -> Unit,
     onToggleFavorite: () -> Unit
 ) {
@@ -145,6 +167,7 @@ private fun HouseCard(
     }
 }
 
+// Se extrae la logica de localizacion para mantener el codigo mas limpio.
 @SuppressLint("MissingPermission")
 @Composable
 private fun rememberLocationLogic(context: Context): LocationLogic {
@@ -202,3 +225,23 @@ private fun rememberLocationLogic(context: Context): LocationLogic {
 }
 
 data class LocationLogic(val requestLocationPermission: () -> Unit)
+
+private fun resourceUri(resourceId: Int): String {
+    return "${ContentResolver.SCHEME_ANDROID_RESOURCE}://com.example.rentfage/drawable/$resourceId"
+}
+
+@Preview(showBackground = true)
+@Composable
+fun HomeScreenPreview() {
+    val casasDeEjemplo = listOf(
+        CasaEntity(1, "UF 28.500", "Av. Vitacura, Vitacura, Santiago", "4 hab | 1 baño | 450 m²", resourceUri(R.drawable.casa1), -33.4130, -70.5947),
+        CasaEntity(2, "UF 35.000", "Camino La Dehesa, Lo Barnechea, Santiago", " 4 hab | 1 baño | 600 m² | Piscina", resourceUri(R.drawable.casa2), -33.3592, -70.5150)
+    )
+    HomeScreen(
+        casas = casasDeEjemplo,
+        isLoggedIn = true,
+        onHouseClick = {},
+        onToggleFavorite = {},
+        onRequestLocation = {}
+    )
+}

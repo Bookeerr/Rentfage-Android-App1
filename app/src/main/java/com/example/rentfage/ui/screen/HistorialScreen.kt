@@ -28,7 +28,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.rentfage.R
-import com.example.rentfage.data.local.entity.CasaEntity
+import com.example.rentfage.data.local.Casa
 import com.example.rentfage.ui.viewmodel.EstadoSolicitud
 import com.example.rentfage.ui.viewmodel.HistorialViewModel
 import com.example.rentfage.ui.viewmodel.Solicitud
@@ -99,6 +99,7 @@ private fun SolicitudCard(solicitud: Solicitud) {
     }
 }
 
+// Función auxiliar para construir la URI de un recurso drawable para las vistas previas.
 private fun resourceUri(resourceId: Int): String {
     return "${ContentResolver.SCHEME_ANDROID_RESOURCE}://com.example.rentfage/drawable/$resourceId"
 }
@@ -106,7 +107,7 @@ private fun resourceUri(resourceId: Int): String {
 @Preview(showBackground = true, name = "Historial con solicitudes")
 @Composable
 fun HistorialScreenPreview() {
-    val casaDeEjemplo = CasaEntity(id = 1, price = "UF 32.500", address = "Lo Barnechea, sector La Dehesa", details = "4 hab | 3 baños | 580 m²", imageUri = resourceUri(R.drawable.casa1), latitude = 0.0, longitude = 0.0, isFavorite = false)
+    val casaDeEjemplo = Casa(id = 1, price = "UF 32.500", address = "Lo Barnechea, sector La Dehesa", details = "4 hab | 3 baños | 580 m²", imageUri = resourceUri(R.drawable.casa1), latitude = 0.0, longitude = 0.0, isFavorite = false)
     val solicitudesDeEjemplo = listOf(
         Solicitud(1, "test@test.com", casaDeEjemplo, "15/05/2024", EstadoSolicitud.Pendiente),
         Solicitud(2, "test@test.com", casaDeEjemplo, "14/05/2024", EstadoSolicitud.Aprobada)

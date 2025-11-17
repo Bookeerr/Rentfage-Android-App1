@@ -2,38 +2,67 @@ package com.example.rentfage.ui.screen
 
 import android.content.ContentResolver
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material3.*
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.rentfage.R
-import com.example.rentfage.data.local.entity.CasaEntity
+import com.example.rentfage.data.local.room.AppDatabase
+import com.example.rentfage.data.local.room.entity.CasaEntity
+import com.example.rentfage.data.repository.CasasRepository
 import com.example.rentfage.ui.viewmodel.CasasViewModel
+import com.example.rentfage.ui.viewmodel.CasasViewModelFactory
 
+// Nueva puerta de entrada que se encarga de la logica del ViewModel.
 @Composable
-fun FavoritosScreenVm(onHouseClick: (Int) -> Unit, casasViewModel: CasasViewModel) {
-    val state by casasViewModel.favoritasUiState.collectAsStateWithLifecycle()
+fun FavoritosScreenVm(onHouseClick: (Int) -> Unit) {
+    val context = LocalContext.current
+
+    // Se crea la cadena de dependencias: BD -> Repositorio -> Factory -> ViewModel
+    val database = remember { AppDatabase.getDatabase(context) }
+    val repository = remember { CasasRepository(database.casaDao()) }
+    val factory = remember { CasasViewModelFactory(repository) }
+    val vm: CasasViewModel = viewModel(factory = factory)
+
+    // Se observa el NUEVO uiState de favoritos.
+    val state by vm.favoritasUiState.collectAsStateWithLifecycle()
 
     FavoritosScreen(
         casas = state.casas,
         onHouseClick = onHouseClick,
-        onToggleFavorite = { casa -> casasViewModel.toggleFavorite(casa) }
+        onToggleFavorite = { casa -> vm.toggleFavorite(casa) } // Se pasa la entidad completa
     )
 }
 
@@ -82,7 +111,7 @@ private fun FavoritosScreen(
 
 @Composable
 private fun HouseCardFavorites(
-    casa: CasaEntity,
+    casa: CasaEntity, // El tipo de dato ahora es CasaEntity
     onClick: () -> Unit,
     onToggleFavorite: () -> Unit
 ) {
