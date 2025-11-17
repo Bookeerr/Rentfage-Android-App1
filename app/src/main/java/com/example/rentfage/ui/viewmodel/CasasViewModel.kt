@@ -2,12 +2,13 @@ package com.example.rentfage.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.rentfage.data.local.room.entity.CasaEntity
+import com.example.rentfage.data.local.entity.CasaEntity
 import com.example.rentfage.data.repository.CasasRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -91,10 +92,10 @@ class CasasViewModel(private val repository: CasasRepository) : ViewModel() {
             _addEditState.update { it.copy(isSaving = false, saveSuccess = true) }
         }
     }
-    
+
     // --- MANEJO DEL FORMULARIO DE AÑADIR/EDITAR ---
 
-    fun loadCasaForEditing(casa: CasaEntity) {
+    private fun populateFormFromEntity(casa: CasaEntity) {
         _addEditState.update {
             it.copy(
                 address = casa.address,
@@ -106,7 +107,14 @@ class CasasViewModel(private val repository: CasasRepository) : ViewModel() {
             )
         }
     }
-    
+
+    suspend fun loadCasaForEditingById(id: Int) {
+        val casa = repository.getById(id).firstOrNull()
+        if (casa != null) {
+            populateFormFromEntity(casa)
+        }
+    }
+
     fun resetAddEditState() {
         _addEditState.value = AddEditPropertyUiState()
     }
@@ -121,7 +129,7 @@ class CasasViewModel(private val repository: CasasRepository) : ViewModel() {
     private fun recomputeCanSubmit() {
         val s = _addEditState.value
         val canSubmit = s.address.isNotBlank() && s.price.isNotBlank() && s.details.isNotBlank() &&
-                        s.latitude.isNotBlank() && s.longitude.isNotBlank() && s.imageUri != null
+                s.latitude.isNotBlank() && s.longitude.isNotBlank() && s.imageUri != null
         _addEditState.update { it.copy(canSubmit = canSubmit) }
     }
 }
