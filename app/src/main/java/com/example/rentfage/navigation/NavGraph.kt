@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -24,16 +25,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navArgument
-import com.example.rentfage.data.local.database.AppDatabase
 import com.example.rentfage.data.local.storage.UserPreferences
-import com.example.rentfage.data.repository.CasasRepository
 import com.example.rentfage.ui.components.AppDrawer
 import com.example.rentfage.ui.components.AppTopBar
 import com.example.rentfage.ui.components.defaultDrawerItems
 import com.example.rentfage.ui.screen.*
 import com.example.rentfage.ui.viewmodel.AuthViewModel
-import com.example.rentfage.ui.viewmodel.CasasViewModel
-import com.example.rentfage.ui.viewmodel.CasasViewModelFactory
 import com.example.rentfage.ui.viewmodel.HistorialViewModel
 import com.example.rentfage.ui.viewmodel.PerfilViewModel
 import kotlinx.coroutines.launch
@@ -47,25 +44,18 @@ fun AppNavGraph(navController: NavHostController) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    // --- CONTEXTO Y PREFERENCIAS ---
-    val context = LocalContext.current
-    val userPreferences = remember { UserPreferences(context) }
-    val userRole by userPreferences.userRole.collectAsState(initial = null)
-
-    // --- VIEWMODELS COMPARTIDOS ---
+    // ViewModels que se comparten entre pantallas
     val perfilViewModel: PerfilViewModel = viewModel()
     val authViewModel: AuthViewModel = viewModel()
     val historialViewModel: HistorialViewModel = viewModel()
 
-    // Crear y compartir el ViewModel de Casas
-    val database = remember { AppDatabase.getInstance(context) }
-    val casasRepository = remember { CasasRepository(database.casaDao()) }
-    val casasViewModelFactory = remember { CasasViewModelFactory(casasRepository) }
-    val casasViewModel: CasasViewModel = viewModel(factory = casasViewModelFactory)
+    val context = LocalContext.current
+    val userPreferences = remember { UserPreferences(context) }
+    val userRole by userPreferences.userRole.collectAsState(initial = null)
 
     val showTopBar = currentRoute != "login" && currentRoute != "register"
 
-    // --- ACCIONES DE NAVEGACIÓN ---
+    // Rutas de navegación
     val goHome: () -> Unit = { navController.navigate("home") }
     val goLogin: () -> Unit = { navController.navigate("login") }
     val goRegister: () -> Unit = { navController.navigate("register") }
@@ -81,8 +71,11 @@ fun AppNavGraph(navController: NavHostController) {
     val onHouseClick: (Int) -> Unit = { casaId -> navController.navigate("detalle_casa/$casaId") }
     val onNavigateBack: () -> Unit = { navController.popBackStack() }
     val goAddEditProperty: (Int?) -> Unit = { casaId ->
-        val route = if (casaId != null) "add_edit_property/$casaId" else "add_edit_property/-1"
-        navController.navigate(route)
+        if (casaId != null) {
+            navController.navigate("add_edit_property/$casaId")
+        } else {
+            navController.navigate("add_edit_property/-1") // Usamos -1 para "nuevo"
+        }
     }
 
     val drawerItems = defaultDrawerItems(
@@ -116,7 +109,7 @@ fun AppNavGraph(navController: NavHostController) {
                 exitTransition = { fadeOut(animationSpec = tween(300)) + slideOutHorizontally(targetOffsetX = { -300 }) }
             ) {
 
-                composable("home") { HomeScreenVm(onHouseClick = onHouseClick, casasViewModel = casasViewModel) }
+                composable("home") { HomeScreenVm(onHouseClick = onHouseClick) }
                 composable("login") { LoginScreenVm(authViewModel = authViewModel, onLoginOkNavigateHome = goHome, onGoRegister = goRegister) }
                 composable("register") { RegisterScreenVm(authViewModel = authViewModel, onRegisteredNavigateLogin = goLogin, onGoLogin = goLogin) }
                 composable("perfil") { PerfilScreenVm(authViewModel = authViewModel, perfilViewModel = perfilViewModel, onLogout = goLogin, onEditProfile = goEditProfile, onChangePassword = goChangePassword) }
@@ -126,30 +119,23 @@ fun AppNavGraph(navController: NavHostController) {
                     arguments = listOf(navArgument("casaId") { type = NavType.IntType })
                 ) { backStackEntry ->
                     val casaId = backStackEntry.arguments?.getInt("casaId") ?: 0
-                    DetalleCasaScreenVm(casaId = casaId, onGoHome = goHome, historialViewModel = historialViewModel, casasViewModel = casasViewModel)
+                    DetalleCasaScreenVm(casaId = casaId, onGoHome = goHome, historialViewModel = historialViewModel)
                 }
 
-                composable("favoritos") { FavoritosScreenVm(onHouseClick = onHouseClick, casasViewModel = casasViewModel) }
+                composable("favoritos") { FavoritosScreenVm(onHouseClick = onHouseClick) }
                 composable("nosotros") { NosotrosScreen() }
                 composable("historial") { HistorialScreen(historialViewModel = historialViewModel) }
-
-                // --- RUTAS DE ADMINISTRADOR ---
-                composable("admin_dashboard") {
-                    AdminDashboardScreen(
-                        casasViewModel = casasViewModel,
-                        onGoToPropertyList = goAdminPropertyList,
-                        onGoToSolicitudes = goAdminSolicitudes
-                    )
-                }
-
-                composable("admin_property_list") {
+                
+                // --- RUTAS DE ADMINISTRADOR (AHORA CONECTADAS) ---
+                composable("admin_dashboard") { AdminDashboardScreen(onGoToPropertyList = goAdminPropertyList, onGoToSolicitudes = goAdminSolicitudes) }
+                
+                composable("admin_property_list") { 
                     AdminPropertyListScreenVm(
                         onAddProperty = { goAddEditProperty(null) },
-                        onEditProperty = { casaId -> goAddEditProperty(casaId) },
-                        casasViewModel = casasViewModel
+                        onEditProperty = { casaId -> goAddEditProperty(casaId) }
                     )
                 }
-
+                
                 composable(
                     route = "add_edit_property/{casaId}",
                     arguments = listOf(navArgument("casaId") { type = NavType.IntType; defaultValue = -1 })
@@ -157,16 +143,25 @@ fun AppNavGraph(navController: NavHostController) {
                     val casaId = backStackEntry.arguments?.getInt("casaId")
                     AddEditPropertyScreenVm(
                         casaId = if (casaId == -1) null else casaId,
-                        onNavigateBack = onNavigateBack,
-                        casasViewModel = casasViewModel
+                        onNavigateBack = onNavigateBack
                     )
                 }
 
                 composable("admin_solicitudes") { AdminSolicitudesScreen(historialViewModel = historialViewModel) }
 
                 // --- OTRAS RUTAS ---
-                composable("edit_profile") { editarperfilScreen(perfilViewModel = perfilViewModel, onSaveChanges = onNavigateBack) }
-                composable("change_password") { CambiarClaveScreen(authViewModel = authViewModel, onSaveChanges = onNavigateBack) }
+                composable("edit_profile") {
+                    editarperfilScreen(
+                        perfilViewModel = perfilViewModel,
+                        onSaveChanges = onNavigateBack
+                    )
+                }
+                composable("change_password") {
+                    CambiarClaveScreen(
+                        authViewModel = authViewModel,
+                        onSaveChanges = onNavigateBack
+                    )
+                }
             }
         }
     }

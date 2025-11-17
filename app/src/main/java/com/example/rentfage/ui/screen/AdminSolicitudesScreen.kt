@@ -29,13 +29,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.rentfage.R
-import com.example.rentfage.data.local.entity.CasaEntity
+import com.example.rentfage.data.local.Casa
 import com.example.rentfage.ui.viewmodel.EstadoSolicitud
 import com.example.rentfage.ui.viewmodel.HistorialViewModel
 import com.example.rentfage.ui.viewmodel.Solicitud
 
 @Composable
 fun AdminSolicitudesScreen(historialViewModel: HistorialViewModel) {
+    // Al iniciar la pantalla, se cargan todas las solicitudes de todos los usuarios.
     LaunchedEffect(Unit) {
         historialViewModel.cargarTodasLasSolicitudes()
     }
@@ -99,6 +100,7 @@ private fun AdminSolicitudCard(
             Text(text = "Fecha: ${solicitud.fecha}", style = MaterialTheme.typography.bodySmall)
             Text(text = "Estado: ${solicitud.estado.name}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
             
+            // Los botones de acción solo se muestran si la solicitud está en estado pendiente.
             if (solicitud.estado == EstadoSolicitud.Pendiente) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -111,6 +113,7 @@ private fun AdminSolicitudCard(
     }
 }
 
+// Función auxiliar para construir la URI de un recurso drawable.
 private fun resourceUri(resourceId: Int): String {
     return "${ContentResolver.SCHEME_ANDROID_RESOURCE}://com.example.rentfage/drawable/$resourceId"
 }
@@ -118,7 +121,7 @@ private fun resourceUri(resourceId: Int): String {
 @Preview(showBackground = true, name = "Admin Solicitudes con datos")
 @Composable
 fun AdminSolicitudesScreenPreview() {
-    val casaDeEjemplo = CasaEntity(id = 1, price = "UF 32.500", address = "Lo Barnechea, sector La Dehesa", details = "4 hab | 3 baños | 580 m²", imageUri = resourceUri(R.drawable.casa1), latitude = 0.0, longitude = 0.0, isFavorite = false)
+    val casaDeEjemplo = Casa(id = 1, price = "UF 32.500", address = "Lo Barnechea, sector La Dehesa", details = "4 hab | 3 baños | 580 m²", imageUri = resourceUri(R.drawable.casa1), latitude = 0.0, longitude = 0.0, isFavorite = false)
     val solicitudesDeEjemplo = listOf(
         Solicitud(1, "cliente1@test.com", casaDeEjemplo, "15/05/2024", EstadoSolicitud.Pendiente),
         Solicitud(2, "cliente2@test.com", casaDeEjemplo, "14/05/2024", EstadoSolicitud.Aprobada),

@@ -23,35 +23,57 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.example.rentfage.data.local.room.AppDatabase
+import com.example.rentfage.data.repository.CasasRepository
 import com.example.rentfage.ui.viewmodel.CasasViewModel
+import com.example.rentfage.ui.viewmodel.CasasViewModelFactory
 
+// Nueva puerta de entrada que se encarga de la logica del ViewModel.
 @Composable
 fun AddEditPropertyScreenVm(
     casaId: Int?,
-    onNavigateBack: () -> Unit,
-    casasViewModel: CasasViewModel
+    onNavigateBack: () -> Unit
 ) {
-    val uiState by casasViewModel.addEditState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val database = remember { AppDatabase.getDatabase(context) }
+    val repository = remember { CasasRepository(database.casaDao()) }
+    val factory = remember { CasasViewModelFactory(repository) }
+    val vm: CasasViewModel = viewModel(factory = factory)
 
+    // Se observa el estado del formulario desde el ViewModel.
+    val uiState by vm.addEditState.collectAsStateWithLifecycle()
+
+    // Efecto para cargar los datos de la casa si estamos editando.
     LaunchedEffect(key1 = casaId) {
         if (casaId != null) {
-            casasViewModel.loadCasaForEditingById(casaId)
+            // Primero, obtenemos la casa completa desde la BD.
+            vm.getCasaById(casaId).collect { casaEntity ->
+                if (casaEntity != null) {
+                    // Una vez que la tenemos, la cargamos en el formulario.
+                    vm.loadCasaForEditing(casaEntity)
+                }
+            }
         } else {
-            casasViewModel.resetAddEditState()
+            // Si es una casa nueva, reseteamos el formulario.
+            vm.resetAddEditState()
         }
     }
-
+    
+    // Efecto para navegar hacia atras cuando el guardado es exitoso.
     LaunchedEffect(key1 = uiState.saveSuccess) {
         if (uiState.saveSuccess) {
             onNavigateBack()
-            casasViewModel.resetAddEditState()
+            vm.resetAddEditState() // Limpiamos el estado para la proxima vez.
         }
     }
 
@@ -65,13 +87,13 @@ fun AddEditPropertyScreenVm(
         imageUri = uiState.imageUri,
         canSubmit = uiState.canSubmit,
         isSaving = uiState.isSaving,
-        onAddressChange = casasViewModel::onAddressChange,
-        onPriceChange = casasViewModel::onPriceChange,
-        onDetailsChange = casasViewModel::onDetailsChange,
-        onLatitudeChange = casasViewModel::onLatitudeChange,
-        onLongitudeChange = casasViewModel::onLongitudeChange,
-        onImageChange = { casasViewModel.onImageUriChange(it?.toString()) },
-        onSaveClick = { casasViewModel.saveProperty(casaId) }
+        onAddressChange = vm::onAddressChange,
+        onPriceChange = vm::onPriceChange,
+        onDetailsChange = vm::onDetailsChange,
+        onLatitudeChange = vm::onLatitudeChange,
+        onLongitudeChange = vm::onLongitudeChange,
+        onImageChange = { vm.onImageUriChange(it?.toString()) },
+        onSaveClick = { vm.saveProperty(casaId) }
     )
 }
 
