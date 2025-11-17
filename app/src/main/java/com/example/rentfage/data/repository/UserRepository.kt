@@ -7,7 +7,7 @@ import java.lang.IllegalArgumentException
 class UserRepository (
     private val userDao: UserDao
 ){
-    //login
+    //inicio sesion
     suspend fun login(email:String, pass: String): Result<UserEntity>{
         val user = userDao.getByEmail(email)
         return if(user != null && user.pass == pass){
