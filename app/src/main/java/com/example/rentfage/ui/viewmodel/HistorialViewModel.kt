@@ -2,7 +2,7 @@ package com.example.rentfage.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.rentfage.data.local.room.entity.CasaEntity
+import com.example.rentfage.data.local.entity.CasaEntity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -14,11 +14,10 @@ import java.util.Locale
 
 enum class EstadoSolicitud { Pendiente, Aprobada, Rechazada }
 
-// La data class Solicitud ahora usa CasaEntity.
 data class Solicitud(
     val id: Int,
     val usuarioEmail: String,
-    val casa: CasaEntity, // <-- CAMBIO IMPORTANTE
+    val casa: CasaEntity, // <-- Usa la entidad correcta de la BD
     val fecha: String,
     var estado: EstadoSolicitud
 )
@@ -33,6 +32,7 @@ class HistorialViewModel : ViewModel() {
     val uiState: StateFlow<HistorialUiState> = _uiState.asStateFlow()
 
     companion object {
+        // Temporal: Se usa una lista global para simular la persistencia de solicitudes.
         private val solicitudesGlobales = mutableListOf<Solicitud>()
     }
 
@@ -42,8 +42,7 @@ class HistorialViewModel : ViewModel() {
         }
     }
 
-    // La funcion addSolicitud ahora acepta una CasaEntity.
-    fun addSolicitud(casa: CasaEntity) { // <-- CAMBIO IMPORTANTE
+    fun addSolicitud(casa: CasaEntity) {
         val currentUserEmail = AuthViewModel.activeUserEmail
         if (currentUserEmail != null) {
             val newId = (solicitudesGlobales.maxOfOrNull { it.id } ?: 0) + 1

@@ -2,83 +2,48 @@ package com.example.rentfage.ui.screen
 
 import android.content.ContentResolver
 import androidx.compose.animation.Crossfade
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.rentfage.R
-import com.example.rentfage.data.local.room.AppDatabase
-import com.example.rentfage.data.local.room.entity.CasaEntity
-import com.example.rentfage.data.repository.CasasRepository
+import com.example.rentfage.data.local.entity.CasaEntity
 import com.example.rentfage.ui.viewmodel.CasasViewModel
-import com.example.rentfage.ui.viewmodel.CasasViewModelFactory
 import com.example.rentfage.ui.viewmodel.HistorialViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-// Nueva "puerta de entrada" que se encarga de la logica del ViewModel.
 @Composable
 fun DetalleCasaScreenVm(
     casaId: Int,
     onGoHome: () -> Unit,
-    historialViewModel: HistorialViewModel = viewModel() // Se mantiene el de historial para el boton de compra
+    historialViewModel: HistorialViewModel,
+    casasViewModel: CasasViewModel
 ) {
-    val context = LocalContext.current
-
-    // Se crea la cadena de dependencias: BD -> Repositorio -> Factory -> ViewModel
-    val database = remember { AppDatabase.getDatabase(context) }
-    val repository = remember { CasasRepository(database.casaDao()) }
-    val factory = remember { CasasViewModelFactory(repository) }
-    val casasViewModel: CasasViewModel = viewModel(factory = factory)
-
-    // Se obtiene el estado de la casa especifica desde el ViewModel.
     val casaState by casasViewModel.getCasaById(casaId).collectAsStateWithLifecycle()
 
-    // Crossfade para una transicion suave entre el estado de carga y el contenido.
     Crossfade(targetState = casaState, label = "DetalleCasaAnimation") { casa ->
         if (casa != null) {
             DetalleCasaContent(
                 casa = casa,
                 onGoHome = onGoHome,
-                onAddSolicitud = { historialViewModel.addSolicitud(casa) } // Adaptado para CasaEntity
+                onAddSolicitud = { historialViewModel.addSolicitud(casa) }
             )
         } else {
-            // Muestra un indicador de carga mientras se busca la casa en la BD.
             Column(
                 modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -94,7 +59,7 @@ fun DetalleCasaScreenVm(
 
 @Composable
 private fun DetalleCasaContent(
-    casa: CasaEntity, // El tipo de dato ahora es CasaEntity
+    casa: CasaEntity,
     onGoHome: () -> Unit,
     onAddSolicitud: () -> Unit
 ) {

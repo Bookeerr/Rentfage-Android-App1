@@ -1,4 +1,4 @@
-package com.example.rentfage.data.local.room.dao
+package com.example.rentfage.data.local.dao
 
 import androidx.room.Dao
 import androidx.room.Delete
@@ -6,7 +6,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
-import com.example.rentfage.data.local.room.entity.CasaEntity
+import com.example.rentfage.data.local.entity.CasaEntity
 import kotlinx.coroutines.flow.Flow
 
 // DAO (Data Access Object) para la tabla de casas.

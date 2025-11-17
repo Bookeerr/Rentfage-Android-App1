@@ -30,36 +30,25 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.rentfage.data.local.room.AppDatabase
-import com.example.rentfage.data.local.room.entity.CasaEntity
-import com.example.rentfage.data.repository.CasasRepository
+import com.example.rentfage.data.local.entity.CasaEntity
 import com.example.rentfage.ui.viewmodel.CasasViewModel
-import com.example.rentfage.ui.viewmodel.CasasViewModelFactory
 
-// Nueva puerta de entrada que se encarga de la logica del ViewModel.
 @Composable
 fun AdminPropertyListScreenVm(
     onAddProperty: () -> Unit,
-    onEditProperty: (Int) -> Unit
+    onEditProperty: (Int) -> Unit,
+    casasViewModel: CasasViewModel
 ) {
-    val context = LocalContext.current
-    val database = remember { AppDatabase.getDatabase(context) }
-    val repository = remember { CasasRepository(database.casaDao()) }
-    val factory = remember { CasasViewModelFactory(repository) }
-    val vm: CasasViewModel = viewModel(factory = factory)
-
-    val uiState by vm.uiState.collectAsStateWithLifecycle()
+    val uiState by casasViewModel.uiState.collectAsStateWithLifecycle()
 
     AdminPropertyListScreen(
         casas = uiState.casas,
         onAddProperty = onAddProperty,
         onEditProperty = onEditProperty,
-        onDeleteProperty = { casa -> vm.deleteCasa(casa) } // Conectamos la accion de borrar.
+        onDeleteProperty = { casa -> casasViewModel.deleteCasa(casa) }
     )
 }
 
