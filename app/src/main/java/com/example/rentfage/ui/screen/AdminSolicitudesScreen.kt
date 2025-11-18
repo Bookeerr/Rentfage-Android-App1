@@ -41,7 +41,7 @@ fun AdminSolicitudesScreen(historialViewModel: HistorialViewModel) {
     }
 
     val state by historialViewModel.uiState.collectAsState()
-
+//cambio
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp)
     ) {
